@@ -18,7 +18,7 @@ const slipVerify = new SlipVerifySDK(clientId, clientSecret);
 async function exampleVerifyWithPayload() {
   try {
     // Example payload from a QR code
-    const payload = "0038000600000101030060217Ae769ae15576f44415102TH9104CF62";
+    const payload = "0038000600000101030060217Bf870bf26685f55526203TH9104CF62";
 
     console.log("Example 1: Verifying slip with payload:", payload);
     const result = await slipVerify.verifySlip(payload);
