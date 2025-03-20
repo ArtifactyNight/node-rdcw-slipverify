@@ -1,6 +1,6 @@
 {
   "name": "node-rdcw-slipverify",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "SlipVerify SDK for node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,7 +28,8 @@
   "dependencies": {
     "@paulmillr/qr": "^0.3.0",
     "axios": "^1.8.1",
-    "date-fns": "^3.3.1"
+    "date-fns": "^3.3.1",
+    "promptparse": "^1.4.0"
   },
   "peerDependencies": {
     "date-fns": "^3.3.1"

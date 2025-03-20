@@ -1,6 +1,6 @@
 # node-rdcw-slipverify
 
-An unofficial SDK for [RDCW Slip Verify](https://slip.rdcw.co.th/) with helper function `validateSlip()`
+An unofficial SDK for [RDCW Slip Verify](https://slip.rdcw.co.th/) with helper function `validateSlip()` and PromptParse QR code validation
 
 ## Installation
 
@@ -23,7 +23,7 @@ const slipVerify = new SlipVerifySDK("your-client-id", "your-client-secret");
 slipVerify
   .verifySlip("0038000600000101030060217Bf870bf26685f55526203TH9104CF62")
   .then((result) => {
-    // Validate the slip
+    // Validate the slip with basic validation
     const expectedAccount = "1234567890"; // Your expected account number
     const expectedBank = "014"; // Your expected bank code
 
@@ -35,6 +35,24 @@ slipVerify
 
     if (!validationResult.isValid) {
       console.log("Validation failed:", validationResult.error);
+      return;
+    }
+
+    // Or use enhanced validation with PromptParse
+    const expectedAmount = "100.00"; // Optional: expected amount
+    const enhancedValidationResult =
+      BankSlipValidator.validateSlipWithPromptParse(
+        result,
+        expectedAccount,
+        expectedBank,
+        expectedAmount
+      );
+
+    if (!enhancedValidationResult.isValid) {
+      console.log(
+        "Enhanced validation failed:",
+        enhancedValidationResult.error
+      );
       return;
     }
 
@@ -292,6 +310,21 @@ Validates a slip by checking:
 - If the slip is too old (more than 1 day)
 - If the account number matches the expected account
 - If the bank code matches the expected bank
+
+Returns a `BankValidationResult` with the validation status and any error message.
+
+#### `BankSlipValidator.validatePromptParse(payload: string): PromptParseResult | null`
+
+Validates a QR code payload using the PromptParse library. Returns the parsed result or null if the payload is invalid.
+
+#### `BankSlipValidator.validateSlipWithPromptParse(result: VerifySlipResult, expectedAccount: string, expectedBank: string, expectedAmount?: string): BankValidationResult`
+
+Enhanced validation that combines basic slip validation with QR code validation using PromptParse. Checks:
+
+- All basic slip validations
+- QR code format validation
+- Account number validation from QR code (Tag 30-01)
+- Amount validation from QR code (Tag 54) if expectedAmount is provided
 
 Returns a `BankValidationResult` with the validation status and any error message.
 

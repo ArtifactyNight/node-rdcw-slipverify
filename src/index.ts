@@ -6,6 +6,7 @@
 import axios, { AxiosInstance } from "axios";
 import decodeQR from "@paulmillr/qr/decode";
 import { isAfter, subDays, parse } from "date-fns";
+import { parse as parsePrompt, EMVCoQR } from "promptparse";
 
 /**
  * Account information for sender or receiver
@@ -84,6 +85,11 @@ export interface BankValidationResult {
   isValid: boolean;
   error?: string;
 }
+
+/**
+ * PromptParse result interface
+ */
+export type PromptParseResult = EMVCoQR;
 
 /**
  * Utility functions for bank slip validation
@@ -207,6 +213,74 @@ export class BankSlipValidator {
       return {
         isValid: false,
         error: "Invalid bank",
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  /**
+   * Validate a QR code payload using PromptParse
+   * @param payload QR code payload string
+   * @returns PromptParse result or null if invalid
+   */
+  static validatePromptParse(payload: string): PromptParseResult | null {
+    try {
+      const result = parsePrompt(payload);
+      return result;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Validate a bank slip with PromptParse
+   * @param result Slip verification result
+   * @param expectedAccount Expected account number
+   * @param expectedBank Expected bank code
+   * @param expectedAmount Expected amount (optional)
+   * @returns Validation result
+   */
+  static validateSlipWithPromptParse(
+    result: VerifySlipResult,
+    expectedAccount: string,
+    expectedBank: string,
+    expectedAmount?: string
+  ): BankValidationResult {
+    // First validate the basic slip
+    const basicValidation = this.validateSlip(
+      result,
+      expectedAccount,
+      expectedBank
+    );
+    if (!basicValidation.isValid) {
+      return basicValidation;
+    }
+
+    // Validate the QR code payload using PromptParse
+    const promptParseResult = this.validatePromptParse(result.data.transRef);
+    if (!promptParseResult) {
+      return {
+        isValid: false,
+        error: "Invalid QR code format",
+      };
+    }
+
+    // Validate account number from PromptParse
+    const qrAccount = promptParseResult.getTagValue("30", "01"); // Tag 30-01 contains the account number
+    if (!qrAccount || qrAccount !== expectedAccount) {
+      return {
+        isValid: false,
+        error: "Account number mismatch in QR code",
+      };
+    }
+
+    // Validate amount if provided
+    const qrAmount = promptParseResult.getTagValue("54"); // Tag 54 contains the transaction amount
+    if (expectedAmount && qrAmount !== expectedAmount) {
+      return {
+        isValid: false,
+        error: "Amount mismatch in QR code",
       };
     }
 
