@@ -1,6 +1,6 @@
 # node-rdcw-slipverify
 
-An unofficial SDK for [RDCW Slip Verify](https://slip.rdcw.co.th/) with helper function `validateSlip()` and PromptParse QR code validation
+An unofficial SDK for [RDCW Slip Verify](https://slip.rdcw.co.th/) with functional approach and type-safe error handling
 
 ## Installation
 
@@ -13,135 +13,84 @@ npm install node-rdcw-slipverify
 ### Basic Usage
 
 ```typescript
-import SlipVerifySDK, { BankSlipValidator } from "node-rdcw-slipverify";
-import { format, parseISO } from "date-fns";
+import { verifySlipFromPayload, validateSlip } from "node-rdcw-slipverify";
 
-// Initialize the SDK with your API credentials
-const slipVerify = new SlipVerifySDK("your-client-id", "your-client-secret");
+const config = {
+  clientId: "your-client-id",
+  clientSecret: "your-client-secret",
+};
 
 // Verify a slip using its payload
-slipVerify
-  .verifySlip("0038000600000101030060217Bf870bf26685f55526203TH9104CF62")
-  .then((result) => {
-    // Validate the slip with basic validation
-    const expectedAccount = "1234567890"; // Your expected account number
-    const expectedBank = "014"; // Your expected bank code
+const verifyResult = await verifySlipFromPayload({
+  payload: "0038000600000101030060217Bf870bf26685f55526203TH9104CF62",
+  config,
+});
 
-    const validationResult = BankSlipValidator.validateSlip(
-      result,
-      expectedAccount,
-      expectedBank
-    );
-
-    if (!validationResult.isValid) {
-      console.log("Validation failed:", validationResult.error);
-      return;
-    }
-
-    // Or use enhanced validation with PromptParse
-    const expectedAmount = "100.00"; // Optional: expected amount
-    const enhancedValidationResult =
-      BankSlipValidator.validateSlipWithPromptParse(
-        result,
-        expectedAccount,
-        expectedBank,
-        expectedAmount
-      );
-
-    if (!enhancedValidationResult.isValid) {
-      console.log(
-        "Enhanced validation failed:",
-        enhancedValidationResult.error
-      );
-      return;
-    }
-
-    console.log("Validation successful!");
-    console.log("Verification result:", result);
-
-    // Format dates using date-fns
-    if (result.valid) {
-      const transDate = parseISO(result.data.transDate);
-      const formattedDate = format(transDate, "yyyy-MM-dd");
-      const formattedTime = format(parseISO(result.data.transTime), "HH:mm:ss");
-
-      console.log("Transaction Date:", formattedDate);
-      console.log("Transaction Time:", formattedTime);
-    }
-  })
-  .catch((error) => {
-    console.error("Verification failed:", error);
+if (verifyResult.error) {
+  console.log("Verification failed:", verifyResult.error.message);
+  // Handle specific error types
+  switch (verifyResult.error.type) {
+    case "API_ERROR":
+      // Handle API errors
+      break;
+    case "QR_CODE_ERROR":
+      // Handle QR code errors
+      break;
+    // ... handle other error types
+  }
+} else {
+  // Validate the slip
+  const validationResult = validateSlip({
+    slipResult: verifyResult.data,
+    expectedAccount: "1234567890", // Your expected account number
+    expectedBank: "014", // Your expected bank code
+    expectedAmount: "100.00", // Optional: expected amount
   });
+
+  if (validationResult.error) {
+    console.log("Validation failed:", validationResult.error.message);
+  } else {
+    console.log("Validation successful!");
+    console.log("Verification result:", verifyResult.data);
+  }
+}
 ```
 
 ### Reading QR code from an image
 
 ```typescript
 import fs from "fs";
-import SlipVerifySDK, { BankSlipValidator } from "rdcw-slipverify-sdk";
+import { verifySlipFromImage, validateSlip } from "node-rdcw-slipverify";
 
-// Initialize the SDK with your API credentials
-const slipVerify = new SlipVerifySDK("your-client-id", "your-client-secret");
+const config = {
+  clientId: "your-client-id",
+  clientSecret: "your-client-secret",
+};
 
 // Read a QR code from an image file
 const imageBuffer = fs.readFileSync("path/to/qr-code-image.png");
 
-// Method 1: Read the QR code to get the payload
-slipVerify
-  .readQRCode(imageBuffer)
-  .then((payload) => {
-    console.log("QR Code payload:", payload);
-    // Verify the payload
-    return slipVerify.verifySlip(payload);
-  })
-  .then((result) => {
-    // Validate the slip
-    const expectedAccount = "1234567890"; // Your expected account number
-    const expectedBank = "014"; // Your expected bank code
+const verifyResult = await verifySlipFromImage({
+  imageData: imageBuffer,
+  config,
+});
 
-    const validationResult = BankSlipValidator.validateSlip(
-      result,
-      expectedAccount,
-      expectedBank
-    );
-
-    if (!validationResult.isValid) {
-      console.log("Validation failed:", validationResult.error);
-      return;
-    }
-
-    console.log("Validation successful!");
-    console.log("Verification result:", result);
-  })
-  .catch((error) => {
-    console.error("Error:", error);
+if (verifyResult.error) {
+  console.log("Verification failed:", verifyResult.error.message);
+} else {
+  const validationResult = validateSlip({
+    slipResult: verifyResult.data,
+    expectedAccount: "1234567890",
+    expectedBank: "014",
   });
 
-// Method 2: Directly verify a slip from an image
-slipVerify
-  .verifySlipFromImage(imageBuffer)
-  .then((result) => {
-    // Validate the slip
-    const expectedAccount = "1234567890"; // Your expected account number
-    const expectedBank = "014"; // Your expected bank code
-
-    const validationResult = BankSlipValidator.validateSlip(
-      result,
-      expectedAccount,
-      expectedBank
-    );
-
-    if (!validationResult.isValid) {
-      console.log("Validation failed:", validationResult.error);
-      return;
-    }
-
+  if (validationResult.error) {
+    console.log("Validation failed:", validationResult.error.message);
+  } else {
     console.log("Validation successful!");
-    console.log("Verification result:", result);
-  })
-  .catch((error) => {
-    console.error("Error:", error);
-  });
+    console.log("Verification result:", verifyResult.data);
+  }
+}
 ```
 
 ### Working with Base64 Images
@@ -150,84 +99,121 @@ slipVerify
 // For base64-encoded images (e.g., from a web form)
 const base64Image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...";
 
-slipVerify
-  .verifySlipFromImage(base64Image)
-  .then((result) => {
-    // Validate the slip
-    const expectedAccount = "1234567890"; // Your expected account number
-    const expectedBank = "014"; // Your expected bank code
+const verifyResult = await verifySlipFromImage({
+  imageData: base64Image,
+  config,
+});
 
-    const validationResult = BankSlipValidator.validateSlip(
-      result,
-      expectedAccount,
-      expectedBank
-    );
-
-    if (!validationResult.isValid) {
-      console.log("Validation failed:", validationResult.error);
-      return;
-    }
-
-    console.log("Validation successful!");
-    console.log("Verification result:", result);
-  })
-  .catch((error) => {
-    console.error("Error:", error);
+if (verifyResult.error) {
+  console.log("Verification failed:", verifyResult.error.message);
+} else {
+  const validationResult = validateSlip({
+    slipResult: verifyResult.data,
+    expectedAccount: "1234567890",
+    expectedBank: "014",
   });
+
+  if (validationResult.error) {
+    console.log("Validation failed:", validationResult.error.message);
+  } else {
+    console.log("Validation successful!");
+    console.log("Verification result:", verifyResult.data);
+  }
+}
 ```
 
 ## API Reference
 
-### Constructor
+### Functions
 
-```typescript
-new SlipVerifySDK(clientId: string, clientSecret: string, options?: { baseUrl?: string })
-```
-
-- `clientId`: Your SlipVerify API client ID
-- `clientSecret`: Your SlipVerify API client secret
-- `options.baseUrl`: Optional API base URL (defaults to 'https://suba.rdcw.co.th')
-
-### Methods
-
-#### `readQRCode(imageData: ArrayBuffer | Buffer | string): Promise<string>`
-
-Reads a QR code from an image and returns the payload string.
-
-#### `verifySlip(payload: string): Promise<VerifySlipResult>`
+#### `verifySlipFromPayload({ payload, config }): Promise<Result<VerifySlipResult, SlipError>>`
 
 Verifies a slip using its payload string.
 
-#### `verifySlipFromImage(imageData: ArrayBuffer | Buffer | string): Promise<VerifySlipResult>`
+#### `verifySlipFromImage({ imageData, config }): Promise<Result<VerifySlipResult, SlipError>>`
 
-Combines readQRCode and verifySlip in one operation - reads a QR code from an image and verifies the slip in one step.
+Reads a QR code from an image and verifies the slip in one step.
 
-### Interfaces
+#### `validateSlip({ slipResult, expectedAccount, expectedBank, expectedAmount? }): Result<true, SlipError>`
 
-#### `Account`
+Validates a slip by checking:
+
+- Slip validity
+- Cache status
+- Age (expires after 1 day)
+- Account number match
+- Bank code match
+- QR code format
+- Amount match (if expectedAmount is provided)
+
+### Types
+
+#### Result Type
 
 ```typescript
-interface Account {
-  type: null | string;
-  value: null | string;
+type Result<T, E> = Success<T> | Failure<E>;
+
+interface Success<T> {
+  data: T;
+  error?: never;
+}
+
+interface Failure<E> {
+  data?: never;
+  error: E;
 }
 ```
 
-#### `Receiver`
+#### Error Types
 
 ```typescript
-interface Receiver {
-  displayName: string;
-  name: string;
-  proxy: Account;
-  account: Account;
+type ErrorType =
+  | "INVALID_SLIP"
+  | "EXPIRED_SLIP"
+  | "QR_CODE_ERROR"
+  | "API_ERROR"
+  | "VALIDATION_ERROR";
+
+interface SlipError {
+  type: ErrorType;
+  message: string;
 }
 ```
 
-#### `Data`
+#### Configuration
 
 ```typescript
-interface Data {
+interface SlipVerifyConfig {
+  clientId: string;
+  clientSecret: string;
+  baseUrl?: string;
+}
+```
+
+#### Validation Parameters
+
+```typescript
+interface ValidateSlipParams {
+  slipResult: VerifySlipResult;
+  expectedAccount: string;
+  expectedBank: string;
+  expectedAmount?: string;
+}
+```
+
+#### API Response Types
+
+```typescript
+interface VerifySlipResult {
+  discriminator: string;
+  valid: boolean;
+  data: TransactionData;
+  quota: Quota;
+  subscription: Subscription;
+  isCached: boolean;
+}
+
+interface TransactionData {
   language: string;
   transRef: string;
   sendingBank: string;
@@ -247,86 +233,6 @@ interface Data {
   toMerchantId: string;
 }
 ```
-
-#### `Quota`
-
-```typescript
-interface Quota {
-  cost: number;
-  usage: number;
-  limit: number;
-}
-```
-
-#### `Subscription`
-
-```typescript
-interface Subscription {
-  id: number;
-  postpaid: boolean;
-}
-```
-
-#### `VerifySlipResult`
-
-```typescript
-interface VerifySlipResult {
-  discriminator: string;
-  valid: boolean;
-  data: Data;
-  quota: Quota;
-  subscription: Subscription;
-  isCached: boolean;
-}
-```
-
-#### `BankValidationResult`
-
-```typescript
-interface BankValidationResult {
-  isValid: boolean;
-  error?: string;
-}
-```
-
-### Bank Slip Validation
-
-The SDK provides a `BankSlipValidator` class with utility functions for validating bank slips:
-
-#### `BankSlipValidator.checkBankAccount(expectedAccount: string, actualAccount: string): boolean`
-
-Checks if a bank account number matches the expected account. The matching is done by comparing at least 3 digits of the account numbers.
-
-#### `BankSlipValidator.isOldSlip(transDate: string, transTime: string): boolean`
-
-Checks if a slip is too old (more than 1 day). The date and time should be in the format returned by the API (YYYYMMDD and HH:mm:ss respectively).
-
-#### `BankSlipValidator.validateSlip(result: VerifySlipResult, expectedAccount: string, expectedBank: string): BankValidationResult`
-
-Validates a slip by checking:
-
-- If the slip is valid
-- If the slip has already been used (cached)
-- If the slip is too old (more than 1 day)
-- If the account number matches the expected account
-- If the bank code matches the expected bank
-
-Returns a `BankValidationResult` with the validation status and any error message.
-
-#### `BankSlipValidator.validatePromptParse(payload: string): PromptParseResult | null`
-
-Validates a QR code payload using the PromptParse library. Returns the parsed result or null if the payload is invalid.
-
-#### `BankSlipValidator.validateSlipWithPromptParse(result: VerifySlipResult, expectedAccount: string, expectedBank: string, expectedAmount?: string): BankValidationResult`
-
-Enhanced validation that combines basic slip validation with QR code validation using PromptParse. Checks:
-
-- All basic slip validations
-- QR code format validation
-- Account number validation from QR code (Tag 30-01)
-- Amount validation from QR code (Tag 54) if expectedAmount is provided
-
-Returns a `BankValidationResult` with the validation status and any error message.
 
 ## Development
 

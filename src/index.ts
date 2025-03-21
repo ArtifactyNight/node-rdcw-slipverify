@@ -8,6 +8,32 @@ import decodeQR from "@paulmillr/qr/decode";
 import { isAfter, subDays, parse } from "date-fns";
 import { parse as parsePrompt, EMVCoQR } from "promptparse";
 
+// Result Types
+export interface Success<T> {
+  data: T;
+  error?: never;
+}
+
+export interface Failure<E> {
+  data?: never;
+  error: E;
+}
+
+export type Result<T, E> = Success<T> | Failure<E>;
+
+// Error Types
+export type ErrorType =
+  | "INVALID_SLIP"
+  | "EXPIRED_SLIP"
+  | "QR_CODE_ERROR"
+  | "API_ERROR"
+  | "VALIDATION_ERROR";
+
+export interface SlipError {
+  type: ErrorType;
+  message: string;
+}
+
 /**
  * Account information for sender or receiver
  */
@@ -90,6 +116,41 @@ export interface BankValidationResult {
  * PromptParse result interface
  */
 export type PromptParseResult = EMVCoQR;
+
+/**
+ * SlipVerify configuration
+ */
+export interface SlipVerifyConfig {
+  clientId: string;
+  clientSecret: string;
+  baseUrl?: string;
+}
+
+/**
+ * Validate slip parameters
+ */
+export interface ValidateSlipParams {
+  slipResult: VerifySlipResult;
+  expectedAccount: string;
+  expectedBank: string;
+  expectedAmount?: string;
+}
+
+/**
+ * Verify slip from image parameters
+ */
+export interface VerifySlipFromImageParams {
+  imageData: ArrayBuffer | Buffer | string;
+  config: SlipVerifyConfig;
+}
+
+/**
+ * Verify slip from payload parameters
+ */
+export interface VerifySlipFromPayloadParams {
+  payload: string;
+  config: SlipVerifyConfig;
+}
 
 /**
  * Utility functions for bank slip validation
