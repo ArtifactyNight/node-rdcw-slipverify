@@ -4,7 +4,7 @@
  */
 
 import axios, { AxiosInstance } from "axios";
-import decodeQR from "@paulmillr/qr/decode";
+import decodeQR from "@paulmillr/qr/decode.js";
 import { isAfter, subDays, parse } from "date-fns";
 import { parse as parsePrompt, EMVCoQR } from "promptparse";
 
@@ -416,9 +416,7 @@ export class SlipVerifySDK {
           ? new Uint8Array(processedInput)
           : new Uint8Array(processedInput as ArrayBuffer);
 
-      // Prepare image data for QR library - this is a simplification
-      // In a real implementation, you'd need to properly decode the image format
-      // Here we're assuming a simple raw RGBA format
+      // Prepare image data for QR library
       const width = Math.sqrt(imageArray.length / 4); // Assuming square image with RGBA
       const height = width;
 
