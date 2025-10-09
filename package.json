@@ -1,11 +1,13 @@
 {
   "name": "node-rdcw-slipverify",
-  "version": "2.0.1",
-  "description": "SlipVerify SDK for node.js",
+  "version": "3.0.0",
+  "description": "RDCW Slip Verify SDK for Node.js - Verify Thai bank transfer slips via QR code scanning",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "RELEASE.md"
   ],
   "scripts": {
     "build": "tsc",
@@ -14,12 +16,32 @@
     "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "release": "./scripts/release.sh"
   },
-  "keywords": [],
+  "keywords": [
+    "thai-bank",
+    "slip-verify",
+    "qr-code",
+    "payment-verification",
+    "promptpay",
+    "rdcw",
+    "slipverify",
+    "bank-transfer",
+    "payment",
+    "thailand"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nightkungz/node-rdcw-slipverify.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nightkungz/node-rdcw-slipverify/issues"
+  },
+  "homepage": "https://github.com/nightkungz/node-rdcw-slipverify#readme",
   "devDependencies": {
     "@types/node": "^22.13.9",
     "ts-node": "^10.9.2",
