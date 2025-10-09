@@ -129,21 +129,21 @@ const rdcw = createRdcwVerify({
 
 ### Available Error Messages
 
-| Category | Message Key | English Default | Thai Default |
-|----------|-------------|-----------------|--------------|
-| **QR** | `invalidDimensions` | The image dimensions could not be determined. Please provide a valid image. | ไม่สามารถระบุขนาดของรูปภาพได้ กรุณาใช้รูปภาพที่ถูกต้อง |
-| | `notFound` | No QR code found in the image | ไม่พบ QR code ในรูปภาพ |
-| | `readFailed` | Failed to read QR code | ไม่สามารถอ่าน QR code ได้ |
-| **API** | `invalidResponse` | Invalid response from API | ได้รับข้อมูลที่ไม่ถูกต้องจาก API |
-| | `requestFailed` | API request failed | การเรียก API ล้มเหลว |
-| | `unexpectedError` | Unexpected error | เกิดข้อผิดพลาดที่ไม่คาดคิด |
-| **Validation** | `invalidSlip` | Invalid slip | สลิปไม่ถูกต้อง |
-| | `slipAlreadyUsed` | This slip has already been used | สลิปนี้ถูกใช้งานไปแล้ว |
-| | `slipExpired` | This slip has expired | สลิปนี้หมดอายุแล้ว |
-| | `invalidAccount` | Invalid account number | หมายเลขบัญชีไม่ถูกต้อง |
-| | `invalidBank` | Invalid bank | ธนาคารไม่ถูกต้อง |
-| | `invalidQRFormat` | Invalid QR code format | รูปแบบ QR code ไม่ถูกต้อง |
-| | `amountMismatch` | Amount mismatch in QR code | จำนวนเงินใน QR code ไม่ตรงกัน |
+| Category       | Message Key         | English Default                                                             | Thai Default                                           |
+| -------------- | ------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------ |
+| **QR**         | `invalidDimensions` | The image dimensions could not be determined. Please provide a valid image. | ไม่สามารถระบุขนาดของรูปภาพได้ กรุณาใช้รูปภาพที่ถูกต้อง |
+|                | `notFound`          | No QR code found in the image                                               | ไม่พบ QR code ในรูปภาพ                                 |
+|                | `readFailed`        | Failed to read QR code                                                      | ไม่สามารถอ่าน QR code ได้                              |
+| **API**        | `invalidResponse`   | Invalid response from API                                                   | ได้รับข้อมูลที่ไม่ถูกต้องจาก API                       |
+|                | `requestFailed`     | API request failed                                                          | การเรียก API ล้มเหลว                                   |
+|                | `unexpectedError`   | Unexpected error                                                            | เกิดข้อผิดพลาดที่ไม่คาดคิด                             |
+| **Validation** | `invalidSlip`       | Invalid slip                                                                | สลิปไม่ถูกต้อง                                         |
+|                | `slipAlreadyUsed`   | This slip has already been used                                             | สลิปนี้ถูกใช้งานไปแล้ว                                 |
+|                | `slipExpired`       | This slip has expired                                                       | สลิปนี้หมดอายุแล้ว                                     |
+|                | `invalidAccount`    | Invalid account number                                                      | หมายเลขบัญชีไม่ถูกต้อง                                 |
+|                | `invalidBank`       | Invalid bank                                                                | ธนาคารไม่ถูกต้อง                                       |
+|                | `invalidQRFormat`   | Invalid QR code format                                                      | รูปแบบ QR code ไม่ถูกต้อง                              |
+|                | `amountMismatch`    | Amount mismatch in QR code                                                  | จำนวนเงินใน QR code ไม่ตรงกัน                          |
 
 ## Simple Inquiry
 

@@ -207,7 +207,9 @@ class RdcwVerify {
       return {
         error: {
           type: "QR_CODE_ERROR",
-          message: `${this.messages.qr.readFailed}: ${(error as Error).message}`,
+          message: `${this.messages.qr.readFailed}: ${
+            (error as Error).message
+          }`,
         },
       };
     }
@@ -248,7 +250,9 @@ class RdcwVerify {
       return {
         error: {
           type: "API_ERROR",
-          message: `${this.messages.api.unexpectedError}: ${(error as Error).message}`,
+          message: `${this.messages.api.unexpectedError}: ${
+            (error as Error).message
+          }`,
         },
       };
     }
