@@ -37,12 +37,12 @@
   "type": "commonjs",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nightkungz/node-rdcw-slipverify.git"
+    "url": "git+https://github.com/ArtifactyNight/node-rdcw-slipverify.git"
   },
   "bugs": {
-    "url": "https://github.com/nightkungz/node-rdcw-slipverify/issues"
+    "url": "https://github.com/ArtifactyNight/node-rdcw-slipverify/issues"
   },
-  "homepage": "https://github.com/nightkungz/node-rdcw-slipverify#readme",
+  "homepage": "https://github.com/ArtifactyNight/node-rdcw-slipverify#readme",
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",

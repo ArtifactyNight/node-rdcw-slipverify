@@ -187,7 +187,7 @@ Push both → Result: **1.1.0** (minor takes precedence) with both changes in re
 ### View Published Package
 
 - npm: https://www.npmjs.com/package/node-rdcw-slipverify
-- GitHub Releases: https://github.com/nightkungz/node-rdcw-slipverify/releases
+- GitHub Releases: https://github.com/ArtifactyNight/node-rdcw-slipverify/releases
 
 ## Manual Publishing (Fallback)
 
