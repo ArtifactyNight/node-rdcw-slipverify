@@ -1,6 +1,10 @@
 # Release Guide
 
-This document explains how to publish new versions of the `node-rdcw-slipverify` package to npm.
+This document explains how releases are automated for the `node-rdcw-slipverify` package using [semantic-release](https://semantic-release.gitbook.io/semantic-release/).
+
+## Overview
+
+This project uses **semantic-release** to fully automate the release workflow. There's no need to manually bump versions, create tags, or publish to npm. Everything is automated based on your commit messages!
 
 ## Setup
 
@@ -23,159 +27,280 @@ To publish to npm via GitHub Actions, you need to create an npm access token:
 5. Value: Paste your npm token
 6. Click **Add secret**
 
-## Publishing Methods
+## How It Works
 
-### Method 1: Automated Release (Recommended)
+### Automated Release Process
 
-Use the release script to create a new version:
+semantic-release analyzes your commit messages and automatically:
 
-```bash
-# Create a new release
-./scripts/release.sh 3.0.1
+- 🎯 Determines the next version number (following [Semantic Versioning](https://semver.org/))
+- 📝 Generates a changelog (`CHANGELOG.md`)
+- 🏷️ Creates a git tag
+- 📦 Publishes to npm with provenance
+- 🚀 Creates a GitHub Release with release notes
+- ✍️ Commits updated files back to the repository
 
-# Push to GitHub (this triggers automatic npm publishing)
-git push origin main --follow-tags
+**All of this happens automatically when you push to the `main` branch!**
+
+## Commit Message Convention
+
+This project follows the [Angular Commit Message Convention](https://github.com/angular/angular/blob/master/CONTRIBUTING.md#-commit-message-format).
+
+### Format
+
+```
+<type>(<scope>): <subject>
+<BLANK LINE>
+<body>
+<BLANK LINE>
+<footer>
 ```
 
-The script will:
+### Commit Types and Release Impact
 
-1. ✅ Validate the version format
-2. ✅ Check if working directory is clean
-3. ✅ Update `package.json` version
-4. ✅ Update `package-lock.json`
+| Commit Type        | Release Type          | Example                                    |
+| ------------------ | --------------------- | ------------------------------------------ |
+| `fix:`             | Patch (1.0.0 → 1.0.1) | `fix(validation): correct bank code check` |
+| `feat:`            | Minor (1.0.0 → 1.1.0) | `feat(locale): add Thai language support`  |
+| `BREAKING CHANGE:` | Major (1.0.0 → 2.0.0) | See below                                  |
+| `docs:`            | No release            | `docs(readme): update examples`            |
+| `chore:`           | No release            | `chore(deps): update dependencies`         |
+| `refactor:`        | Patch\*               | `refactor(api): simplify validation logic` |
+| `perf:`            | Patch                 | `perf(qr): optimize QR code parsing`       |
+| `style:`           | Patch\*               | `style(format): apply prettier formatting` |
+
+\*configured in `.releaserc.json`
+
+### Breaking Changes
+
+To trigger a **major version release**, add `BREAKING CHANGE:` in the commit footer:
+
+```bash
+feat(api): redesign validation interface
+
+BREAKING CHANGE: The validate method now returns a Result type instead of throwing errors.
+Migration guide available in documentation.
+```
+
+### Commit Examples
+
+#### Patch Release (Bug Fix)
+
+```bash
+fix(qr): handle corrupted QR code images properly
+```
+
+#### Minor Release (New Feature)
+
+```bash
+feat(validation): add custom timeout configuration
+
+Allow users to configure API request timeout via options.
+```
+
+#### Major Release (Breaking Change)
+
+```bash
+feat(api): redesign SDK initialization
+
+BREAKING CHANGE: Changed from class-based to factory function pattern.
+
+Before:
+  const rdcw = new RdcwVerify({ clientId, secret });
+
+After:
+  const rdcw = createRdcwVerify({ clientId, secret });
+```
+
+#### No Release
+
+```bash
+docs(readme): fix typo in usage example
+```
+
+```bash
+chore(deps): update axios to v1.8.1
+```
+
+## Publishing a New Release
+
+### Step 1: Make Changes and Commit
+
+Follow the commit message convention when committing your changes:
+
+```bash
+# Make your changes
+git add .
+
+# Commit with conventional format
+git commit -m "feat(locale): add French language support"
+```
+
+### Step 2: Push to Main
+
+```bash
+git push origin main
+```
+
+That's it! 🎉
+
+### Step 3: Automated Process
+
+GitHub Actions will automatically:
+
+1. ✅ Analyze your commits
+2. ✅ Determine the next version (e.g., 1.2.0 → 1.3.0 for a `feat:` commit)
+3. ✅ Update `package.json` and `package-lock.json`
+4. ✅ Generate or update `CHANGELOG.md`
 5. ✅ Build the package
-6. ✅ Commit the changes
-7. ✅ Create a git tag (e.g., `v3.0.1`)
+6. ✅ Publish to npm with provenance
+7. ✅ Create a git tag (e.g., `v1.3.0`)
+8. ✅ Create a GitHub Release with release notes
+9. ✅ Commit updated files back to main
 
-When you push the tag to GitHub, the GitHub Actions workflow will:
+## Multiple Commits
 
-- Extract version from the tag
-- Update package.json version
-- Install dependencies
-- Build the package
-- Publish to npm with provenance
-- Create a GitHub Release
+If you push multiple commits, semantic-release will:
 
-### Method 2: Manual GitHub Workflow
+- Analyze all commits since the last release
+- Determine the highest version bump needed
+- Include all changes in the release notes
 
-You can also trigger a manual release from GitHub:
-
-1. Go to **Actions** tab in your repository
-2. Select **Publish to npm (Manual)** workflow
-3. Click **Run workflow**
-4. Enter the version number (e.g., `3.0.1`)
-5. Click **Run workflow**
-
-This will:
-
-- Update version in package.json
-- Build and publish to npm
-- Commit changes back to the repository
-- Create a git tag
-- Create a GitHub Release
-
-### Method 3: Local Manual Publishing
-
-If you prefer to publish manually from your local machine:
+**Example:**
 
 ```bash
-# Update version
-npm version 3.0.1
+fix(api): fix timeout issue          # Would trigger patch (1.0.0 → 1.0.1)
+feat(locale): add Thai support       # Would trigger minor (1.0.0 → 1.1.0)
+```
 
-# Build the package
+Push both → Result: **1.1.0** (minor takes precedence) with both changes in release notes
+
+## Verifying Releases
+
+### Check Release Status
+
+1. Go to your GitHub repository
+2. Click on **Actions** tab
+3. View the latest workflow run
+4. Check the **Release** job for details
+
+### View Published Package
+
+- npm: https://www.npmjs.com/package/node-rdcw-slipverify
+- GitHub Releases: https://github.com/nightkungz/node-rdcw-slipverify/releases
+
+## Manual Publishing (Fallback)
+
+If you need to publish manually (e.g., for testing or if automation fails):
+
+### Method 1: Use the Manual GitHub Workflow
+
+1. Go to **Actions** → **Publish to npm (Manual)**
+2. Click **Run workflow**
+3. Enter the version (e.g., `3.0.1`)
+4. Click **Run workflow**
+
+### Method 2: Publish Locally
+
+```bash
+# Ensure you're logged in to npm
+npm login
+
+# Build and publish
 npm run build
-
-# Publish to npm
 npm publish
-
-# Push changes and tags
-git push origin main --follow-tags
 ```
 
-## Version Numbering
+## Configuration
 
-Follow [Semantic Versioning (SemVer)](https://semver.org/):
+### semantic-release Configuration (`.releaserc.json`)
 
-- **Major version** (`X.0.0`): Breaking changes
-- **Minor version** (`x.X.0`): New features (backward compatible)
-- **Patch version** (`x.x.X`): Bug fixes (backward compatible)
-
-Examples:
-
-- `3.0.1` - Patch release
-- `3.1.0` - Minor release
-- `4.0.0` - Major release
-- `3.1.0-beta.1` - Pre-release
-
-## Workflow Files
-
-### `.github/workflows/publish-npm.yml`
-
-Automatically publishes when a tag is pushed:
-
-```bash
-git tag v3.0.1
-git push origin v3.0.1
+```json
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer", // Analyzes commits
+    "@semantic-release/release-notes-generator", // Generates release notes
+    "@semantic-release/changelog", // Updates CHANGELOG.md
+    "@semantic-release/npm", // Publishes to npm
+    "@semantic-release/github", // Creates GitHub Release
+    "@semantic-release/git" // Commits updated files
+  ]
+}
 ```
 
-### `.github/workflows/publish-npm-manual.yml`
+### Workflow File (`.github/workflows/publish-npm.yml`)
 
-Manually triggered workflow from GitHub Actions UI.
+The GitHub Actions workflow is triggered on every push to `main` and runs semantic-release.
 
 ## Troubleshooting
 
-### Publishing Fails with Authentication Error
+### Release Didn't Trigger
 
-Make sure the `NPM_TOKEN` secret is set correctly in GitHub:
+Check if your commits follow the convention:
 
-1. Verify the token is still valid on npmjs.com
-2. Check the token has **Automation** permissions
-3. Ensure the secret name is exactly `NPM_TOKEN`
+- ✅ `feat(api): add new method`
+- ✅ `fix(validation): correct logic`
+- ❌ `update code` (no type)
+- ❌ `fixed bug` (no type)
 
-### Version Already Exists on npm
+### Version Not Updated
 
-npm doesn't allow republishing the same version. You need to:
+- Only `fix:`, `feat:`, `perf:`, and breaking changes trigger releases
+- `docs:`, `chore:`, `test:`, `ci:` commits don't trigger releases (unless configured)
 
-1. Increment the version number
-2. Create a new tag
-3. Publish again
+### Workflow Failed
 
-### Build Fails in GitHub Actions
-
-Check the build logs in the Actions tab. Common issues:
-
-- Missing dependencies in `package.json`
-- TypeScript compilation errors
-- Test failures (if you add tests)
+1. Check the GitHub Actions logs
+2. Common issues:
+   - Missing `NPM_TOKEN` secret
+   - npm authentication failure
+   - Build errors
+   - Merge conflicts in automated commits
 
 ## Best Practices
 
-1. **Test Before Release**: Always test your changes locally before releasing
-2. **Update Changelog**: Keep a CHANGELOG.md with notable changes
-3. **Breaking Changes**: Bump major version for breaking changes
-4. **Pre-releases**: Use pre-release versions for testing (e.g., `3.1.0-beta.1`)
-5. **Clean Working Directory**: Commit all changes before creating a release
+1. **Write clear commit messages** - They become your release notes
+2. **Group related changes** - Commit logical units together
+3. **Use scopes** - Help categorize changes (e.g., `feat(api):`, `fix(validation):`)
+4. **Document breaking changes** - Always explain migration steps
+5. **Test before pushing** - Ensure builds pass locally
+6. **Review the changelog** - Check generated `CHANGELOG.md` after releases
 
-## Example Workflow
+## Tools to Help with Commits
+
+### Commitizen
+
+Interactive commit message generator:
 
 ```bash
-# 1. Make your changes
-git add .
-git commit -m "feat: add new validation method"
+npm install -g commitizen cz-conventional-changelog
 
-# 2. Create a release
-./scripts/release.sh 3.1.0
+# Use 'git cz' instead of 'git commit'
+git cz
+```
 
-# 3. Push to GitHub (triggers automatic publishing)
-git push origin main --follow-tags
+### Commitlint
 
-# 4. Check GitHub Actions for publishing status
-# 5. Verify the new version on npmjs.com
+Validate commit messages in git hooks:
+
+```bash
+npm install --save-dev @commitlint/cli @commitlint/config-conventional husky
+
+# Setup git hooks
+npx husky install
+npx husky add .git/hooks/commit-msg 'npx commitlint --edit $1'
 ```
 
 ## Resources
 
-- [npm Documentation](https://docs.npmjs.com/)
+- [semantic-release documentation](https://semantic-release.gitbook.io/semantic-release/)
+- [Angular Commit Message Convention](https://github.com/angular/angular/blob/master/CONTRIBUTING.md#-commit-message-format)
 - [Semantic Versioning](https://semver.org/)
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [npm Provenance](https://docs.npmjs.com/generating-provenance-statements)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+
+## Summary
+
+✨ **No more manual version management!** Just write good commit messages and push to `main`. semantic-release handles everything else automatically.
+
+🎯 **Key Takeaway**: Your commit messages determine your releases. Use conventional commits, and let automation do the rest!

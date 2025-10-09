@@ -1,5 +1,7 @@
 # node-rdcw-slipverify
 
+[![semantic-release: angular](https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
+
 An unofficial SDK for [RDCW Slip Verify](https://slip.rdcw.co.th/) with a clean factory function API combining functional and OOP paradigms.
 
 ## Installation
@@ -422,6 +424,63 @@ npm run dev
 - `npm run dev` - Run the package in development mode
 - `npm run clean` - Remove build artifacts
 - `npm run prepare` - Prepare the package for publishing
+
+### Commit Message Convention
+
+This project uses [semantic-release](https://semantic-release.gitbook.io/semantic-release/) with the [Angular Commit Message Convention](https://github.com/angular/angular/blob/master/CONTRIBUTING.md#-commit-message-format) for automated releases.
+
+**Format:**
+```
+<type>(<scope>): <subject>
+<BLANK LINE>
+<body>
+<BLANK LINE>
+<footer>
+```
+
+**Types:**
+- `feat`: A new feature (triggers minor release)
+- `fix`: A bug fix (triggers patch release)
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, missing semi colons, etc)
+- `refactor`: Code refactoring
+- `perf`: Performance improvements (triggers patch release)
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+- `ci`: CI/CD changes
+
+**Breaking Changes:**
+Add `BREAKING CHANGE:` in the commit footer to trigger a major release:
+```
+feat(api): change validation API
+
+BREAKING CHANGE: The validate method now returns a Result type instead of throwing errors
+```
+
+**Examples:**
+```bash
+# Patch release (1.0.0 -> 1.0.1)
+fix(validation): correct bank code validation
+
+# Minor release (1.0.0 -> 1.1.0)
+feat(locale): add Thai language support
+
+# Major release (1.0.0 -> 2.0.0)
+feat(api): redesign SDK API
+
+BREAKING CHANGE: Removed deprecated methods and changed initialization pattern
+```
+
+**Automated Release Process:**
+
+1. Push commits to `main` branch following the commit convention
+2. GitHub Actions automatically runs semantic-release
+3. Version is bumped based on commit types
+4. CHANGELOG.md is generated
+5. Package is published to npm with provenance
+6. GitHub Release is created with release notes
+
+No manual version bumping or tagging needed! 🎉
 
 ## License
 
