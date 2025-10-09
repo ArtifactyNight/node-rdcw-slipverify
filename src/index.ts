@@ -9,6 +9,8 @@ import { isAfter, parse, subDays } from "date-fns";
 import { parse as parsePrompt } from "promptparse";
 
 import type {
+  Locale,
+  LocaleMessages,
   RdcwVerifyConfig,
   Result,
   SlipError,
@@ -20,6 +22,65 @@ import type {
 export * from "./types";
 
 /**
+ * Default locale messages for English
+ */
+const enMessages: LocaleMessages = {
+  qr: {
+    invalidDimensions:
+      "The image dimensions could not be determined. Please provide a valid image.",
+    notFound: "No QR code found in the image",
+    readFailed: "Failed to read QR code",
+  },
+  api: {
+    invalidResponse: "Invalid response from API",
+    requestFailed: "API request failed",
+    unexpectedError: "Unexpected error",
+  },
+  validation: {
+    invalidSlip: "Invalid slip",
+    slipAlreadyUsed: "This slip has already been used",
+    slipExpired: "This slip has expired",
+    invalidAccount: "Invalid account number",
+    invalidBank: "Invalid bank",
+    invalidQRFormat: "Invalid QR code format",
+    amountMismatch: "Amount mismatch in QR code",
+  },
+};
+
+/**
+ * Default locale messages for Thai
+ */
+const thMessages: LocaleMessages = {
+  qr: {
+    invalidDimensions: "ไม่สามารถระบุขนาดของรูปภาพได้ กรุณาใช้รูปภาพที่ถูกต้อง",
+    notFound: "ไม่พบ QR code ในรูปภาพ",
+    readFailed: "ไม่สามารถอ่าน QR code ได้",
+  },
+  api: {
+    invalidResponse: "ได้รับข้อมูลที่ไม่ถูกต้องจาก API",
+    requestFailed: "การเรียก API ล้มเหลว",
+    unexpectedError: "เกิดข้อผิดพลาดที่ไม่คาดคิด",
+  },
+  validation: {
+    invalidSlip: "สลิปไม่ถูกต้อง",
+    slipAlreadyUsed: "สลิปนี้ถูกใช้งานไปแล้ว",
+    slipExpired: "สลิปนี้หมดอายุแล้ว",
+    invalidAccount: "หมายเลขบัญชีไม่ถูกต้อง",
+    invalidBank: "ธนาคารไม่ถูกต้อง",
+    invalidQRFormat: "รูปแบบ QR code ไม่ถูกต้อง",
+    amountMismatch: "จำนวนเงินใน QR code ไม่ตรงกัน",
+  },
+};
+
+/**
+ * Locale messages registry
+ */
+const localeRegistry: Record<Locale, LocaleMessages> = {
+  en: enMessages,
+  th: thMessages,
+};
+
+/**
  * Main RDCW Verify class
  */
 class RdcwVerify {
@@ -27,11 +88,17 @@ class RdcwVerify {
   private secret: string;
   private baseUrl: string;
   private apiClient: AxiosInstance;
+  private locale: Locale;
+  private messages: LocaleMessages;
 
   constructor(config: RdcwVerifyConfig) {
     this.clientId = config.clientId;
     this.secret = config.secret;
     this.baseUrl = config.baseUrl || "https://suba.rdcw.co.th";
+    this.locale = config.locale || "en";
+
+    // Initialize locale messages
+    this.messages = this.initializeMessages(this.locale, config.customMessages);
 
     // Initialize axios instance with default configuration
     this.apiClient = axios.create({
@@ -44,6 +111,33 @@ class RdcwVerify {
         "Content-Type": "application/json",
       },
     });
+  }
+
+  /**
+   * Initialize locale messages with custom overrides
+   * @param locale Selected locale
+   * @param customMessages Custom message overrides
+   * @returns Merged locale messages
+   */
+  private initializeMessages(
+    locale: Locale,
+    customMessages?: Partial<LocaleMessages>
+  ): LocaleMessages {
+    const baseMessages = localeRegistry[locale];
+
+    if (!customMessages) {
+      return baseMessages;
+    }
+
+    // Deep merge custom messages with base messages
+    return {
+      qr: { ...baseMessages.qr, ...customMessages.qr },
+      api: { ...baseMessages.api, ...customMessages.api },
+      validation: {
+        ...baseMessages.validation,
+        ...customMessages.validation,
+      },
+    };
   }
 
   /**
@@ -85,8 +179,7 @@ class RdcwVerify {
         return {
           error: {
             type: "QR_CODE_ERROR",
-            message:
-              "The image dimensions could not be determined. Please provide a valid image.",
+            message: this.messages.qr.invalidDimensions,
           },
         };
       }
@@ -104,7 +197,7 @@ class RdcwVerify {
         return {
           error: {
             type: "QR_CODE_ERROR",
-            message: "No QR code found in the image",
+            message: this.messages.qr.notFound,
           },
         };
       }
@@ -114,7 +207,7 @@ class RdcwVerify {
       return {
         error: {
           type: "QR_CODE_ERROR",
-          message: `Failed to read QR code: ${(error as Error).message}`,
+          message: `${this.messages.qr.readFailed}: ${(error as Error).message}`,
         },
       };
     }
@@ -140,7 +233,7 @@ class RdcwVerify {
       return {
         error: {
           type: "API_ERROR",
-          message: "Invalid response from API",
+          message: this.messages.api.invalidResponse,
         },
       };
     } catch (error) {
@@ -148,14 +241,14 @@ class RdcwVerify {
         return {
           error: {
             type: "API_ERROR",
-            message: `API request failed: ${error.message}`,
+            message: `${this.messages.api.requestFailed}: ${error.message}`,
           },
         };
       }
       return {
         error: {
           type: "API_ERROR",
-          message: `Unexpected error: ${(error as Error).message}`,
+          message: `${this.messages.api.unexpectedError}: ${(error as Error).message}`,
         },
       };
     }
@@ -240,7 +333,7 @@ class RdcwVerify {
     if (!result.valid) {
       const error: SlipError = {
         type: "INVALID_SLIP",
-        message: "Invalid slip",
+        message: this.messages.validation.invalidSlip,
       };
       if (options.onValidationError) {
         options.onValidationError(error);
@@ -252,7 +345,7 @@ class RdcwVerify {
     if (result.isCached) {
       const error: SlipError = {
         type: "VALIDATION_ERROR",
-        message: "This slip has already been used",
+        message: this.messages.validation.slipAlreadyUsed,
       };
       if (options.onValidationError) {
         options.onValidationError(error);
@@ -264,7 +357,7 @@ class RdcwVerify {
     if (this.isOldSlip(result.data.transDate, result.data.transTime)) {
       const error: SlipError = {
         type: "EXPIRED_SLIP",
-        message: "This slip has expired",
+        message: this.messages.validation.slipExpired,
       };
       if (options.onValidationError) {
         options.onValidationError(error);
@@ -281,7 +374,7 @@ class RdcwVerify {
       ) {
         const error: SlipError = {
           type: "VALIDATION_ERROR",
-          message: "Invalid account number",
+          message: this.messages.validation.invalidAccount,
         };
         if (options.onValidationError) {
           options.onValidationError(error);
@@ -295,7 +388,7 @@ class RdcwVerify {
       if (result.data.receivingBank !== options.expectedBank) {
         const error: SlipError = {
           type: "VALIDATION_ERROR",
-          message: "Invalid bank",
+          message: this.messages.validation.invalidBank,
         };
         if (options.onValidationError) {
           options.onValidationError(error);
@@ -313,7 +406,7 @@ class RdcwVerify {
         if (!promptParseResult) {
           const error: SlipError = {
             type: "VALIDATION_ERROR",
-            message: "Invalid QR code format",
+            message: this.messages.validation.invalidQRFormat,
           };
           if (options.onValidationError) {
             options.onValidationError(error);
@@ -326,7 +419,7 @@ class RdcwVerify {
         if (qrAmount !== options.expectedAmount) {
           const error: SlipError = {
             type: "VALIDATION_ERROR",
-            message: "Amount mismatch in QR code",
+            message: this.messages.validation.amountMismatch,
           };
           if (options.onValidationError) {
             options.onValidationError(error);
@@ -336,7 +429,7 @@ class RdcwVerify {
       } catch (error) {
         const slipError: SlipError = {
           type: "VALIDATION_ERROR",
-          message: "Invalid QR code format",
+          message: this.messages.validation.invalidQRFormat,
         };
         if (options.onValidationError) {
           options.onValidationError(slipError);

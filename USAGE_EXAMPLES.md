@@ -6,12 +6,13 @@ This document provides comprehensive examples of using the RDCW Slip Verify SDK.
 
 1. [Installation](#installation)
 2. [Basic Setup](#basic-setup)
-3. [Simple Inquiry](#simple-inquiry)
-4. [Inquiry with Validation](#inquiry-with-validation)
-5. [Using Callbacks](#using-callbacks)
-6. [Manual Validation](#manual-validation)
-7. [Image-based Verification](#image-based-verification)
-8. [Error Handling](#error-handling)
+3. [Locale Configuration](#locale-configuration)
+4. [Simple Inquiry](#simple-inquiry)
+5. [Inquiry with Validation](#inquiry-with-validation)
+6. [Using Callbacks](#using-callbacks)
+7. [Manual Validation](#manual-validation)
+8. [Image-based Verification](#image-based-verification)
+9. [Error Handling](#error-handling)
 
 ## Installation
 
@@ -30,6 +31,119 @@ const rdcw = createRdcwVerify({
   baseUrl: "https://suba.rdcw.co.th", // optional, this is the default
 });
 ```
+
+## Locale Configuration
+
+The SDK supports multiple locales for error messages. By default, it uses English (`en`).
+
+### Using English (Default)
+
+```typescript
+import { createRdcwVerify } from "node-rdcw-slipverify";
+
+const rdcw = createRdcwVerify({
+  clientId: "your-client-id",
+  secret: "your-client-secret",
+  // locale: "en" is the default, no need to specify
+});
+
+const result = await rdcw.inquiryPayload(invalidPayload);
+
+if (result.error) {
+  console.log(result.error.message); // "Invalid slip"
+}
+```
+
+### Using Thai Locale
+
+```typescript
+import { createRdcwVerify } from "node-rdcw-slipverify";
+
+const rdcw = createRdcwVerify({
+  clientId: "your-client-id",
+  secret: "your-client-secret",
+  locale: "th", // Use Thai locale
+});
+
+const result = await rdcw.inquiryPayload(invalidPayload);
+
+if (result.error) {
+  console.log(result.error.message); // "สลิปไม่ถูกต้อง"
+}
+```
+
+### Custom Messages
+
+You can override specific messages while keeping the rest from the selected locale:
+
+```typescript
+import { createRdcwVerify } from "node-rdcw-slipverify";
+
+const rdcw = createRdcwVerify({
+  clientId: "your-client-id",
+  secret: "your-client-secret",
+  locale: "en",
+  customMessages: {
+    validation: {
+      invalidSlip: "The payment slip is invalid",
+      slipExpired: "This payment slip has expired",
+      slipAlreadyUsed: "This payment slip has been used before",
+      invalidAccount: "The account number does not match",
+      invalidBank: "The bank code does not match",
+      invalidQRFormat: "The QR code format is invalid",
+      amountMismatch: "The payment amount does not match",
+    },
+    qr: {
+      invalidDimensions: "Invalid image dimensions",
+      notFound: "No QR code detected in the image",
+      readFailed: "Unable to read QR code",
+    },
+    api: {
+      invalidResponse: "Received invalid response from the server",
+      requestFailed: "Server request failed",
+      unexpectedError: "An unexpected error occurred",
+    },
+  },
+});
+```
+
+### Partial Custom Messages
+
+You can also override only specific messages:
+
+```typescript
+const rdcw = createRdcwVerify({
+  clientId: "your-client-id",
+  secret: "your-client-secret",
+  locale: "th",
+  customMessages: {
+    validation: {
+      // Override only specific validation messages in Thai
+      invalidSlip: "สลิปชำระเงินไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง",
+      slipExpired: "สลิปนี้เกินกำหนดเวลาที่ใช้งานได้แล้ว",
+    },
+    // Other messages will use default Thai locale
+  },
+});
+```
+
+### Available Error Messages
+
+| Category | Message Key | English Default | Thai Default |
+|----------|-------------|-----------------|--------------|
+| **QR** | `invalidDimensions` | The image dimensions could not be determined. Please provide a valid image. | ไม่สามารถระบุขนาดของรูปภาพได้ กรุณาใช้รูปภาพที่ถูกต้อง |
+| | `notFound` | No QR code found in the image | ไม่พบ QR code ในรูปภาพ |
+| | `readFailed` | Failed to read QR code | ไม่สามารถอ่าน QR code ได้ |
+| **API** | `invalidResponse` | Invalid response from API | ได้รับข้อมูลที่ไม่ถูกต้องจาก API |
+| | `requestFailed` | API request failed | การเรียก API ล้มเหลว |
+| | `unexpectedError` | Unexpected error | เกิดข้อผิดพลาดที่ไม่คาดคิด |
+| **Validation** | `invalidSlip` | Invalid slip | สลิปไม่ถูกต้อง |
+| | `slipAlreadyUsed` | This slip has already been used | สลิปนี้ถูกใช้งานไปแล้ว |
+| | `slipExpired` | This slip has expired | สลิปนี้หมดอายุแล้ว |
+| | `invalidAccount` | Invalid account number | หมายเลขบัญชีไม่ถูกต้อง |
+| | `invalidBank` | Invalid bank | ธนาคารไม่ถูกต้อง |
+| | `invalidQRFormat` | Invalid QR code format | รูปแบบ QR code ไม่ถูกต้อง |
+| | `amountMismatch` | Amount mismatch in QR code | จำนวนเงินใน QR code ไม่ตรงกัน |
 
 ## Simple Inquiry
 

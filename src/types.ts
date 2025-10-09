@@ -99,12 +99,44 @@ export interface VerifySlipResult {
 }
 
 /**
+ * Locale type
+ */
+export type Locale = "en" | "th";
+
+/**
+ * Locale messages for error and validation messages
+ */
+export interface LocaleMessages {
+  qr: {
+    invalidDimensions: string;
+    notFound: string;
+    readFailed: string;
+  };
+  api: {
+    invalidResponse: string;
+    requestFailed: string;
+    unexpectedError: string;
+  };
+  validation: {
+    invalidSlip: string;
+    slipAlreadyUsed: string;
+    slipExpired: string;
+    invalidAccount: string;
+    invalidBank: string;
+    invalidQRFormat: string;
+    amountMismatch: string;
+  };
+}
+
+/**
  * RDCW Verify configuration
  */
 export interface RdcwVerifyConfig {
   clientId: string;
   secret: string;
   baseUrl?: string;
+  locale?: Locale;
+  customMessages?: Partial<LocaleMessages>;
 }
 
 /**

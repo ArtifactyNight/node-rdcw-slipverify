@@ -30,6 +30,55 @@ if (result.error) {
 }
 ```
 
+## Locale Support
+
+The SDK supports multiple locales for error messages. By default, it uses English (`en`), but you can configure it to use Thai (`th`) or provide custom messages.
+
+### Using Thai Locale
+
+```typescript
+import { createRdcwVerify } from "node-rdcw-slipverify";
+
+const rdcw = createRdcwVerify({
+  clientId: "your-client-id",
+  secret: "your-client-secret",
+  locale: "th", // Use Thai locale
+});
+
+// All error messages will now be in Thai
+const result = await rdcw.inquiryPayload(invalidPayload);
+
+if (result.error) {
+  console.log(result.error.message); // "สลิปไม่ถูกต้อง" instead of "Invalid slip"
+}
+```
+
+### Custom Messages
+
+You can also provide custom messages to override the default locale messages:
+
+```typescript
+const rdcw = createRdcwVerify({
+  clientId: "your-client-id",
+  secret: "your-client-secret",
+  locale: "en",
+  customMessages: {
+    validation: {
+      invalidSlip: "The slip you provided is not valid",
+      slipExpired: "This slip is too old to be processed",
+    },
+    qr: {
+      notFound: "We couldn't find a QR code in your image",
+    },
+  },
+});
+```
+
+### Available Locales
+
+- `en` - English (default)
+- `th` - Thai (ภาษาไทย)
+
 ## Usage
 
 ### 1. Basic Inquiry (No Validation)
@@ -165,6 +214,8 @@ Creates a new RDCW Verify instance.
 - `config.clientId` (string, required): Your SlipVerify client ID
 - `config.secret` (string, required): Your SlipVerify client secret
 - `config.baseUrl` (string, optional): Custom API base URL (default: "https://suba.rdcw.co.th")
+- `config.locale` (Locale, optional): Locale for error messages - `"en"` or `"th"` (default: "en")
+- `config.customMessages` (Partial<LocaleMessages>, optional): Custom message overrides
 
 **Returns:** `RdcwVerify` instance
 
@@ -204,6 +255,38 @@ Manually validates a verification result.
 **Returns:** `Result<VerifySlipResult, SlipError>`
 
 ### Types
+
+#### `Locale`
+
+```typescript
+type Locale = "en" | "th";
+```
+
+#### `LocaleMessages`
+
+```typescript
+interface LocaleMessages {
+  qr: {
+    invalidDimensions: string;
+    notFound: string;
+    readFailed: string;
+  };
+  api: {
+    invalidResponse: string;
+    requestFailed: string;
+    unexpectedError: string;
+  };
+  validation: {
+    invalidSlip: string;
+    slipAlreadyUsed: string;
+    slipExpired: string;
+    invalidAccount: string;
+    invalidBank: string;
+    invalidQRFormat: string;
+    amountMismatch: string;
+  };
+}
+```
 
 #### `Result<T, E>`
 
