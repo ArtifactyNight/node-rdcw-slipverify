@@ -1,6 +1,6 @@
 # node-rdcw-slipverify
 
-An unofficial SDK for [RDCW Slip Verify](https://slip.rdcw.co.th/) with functional approach and type-safe error handling
+An unofficial SDK for [RDCW Slip Verify](https://slip.rdcw.co.th/) with a clean factory function API combining functional and OOP paradigms.
 
 ## Installation
 
@@ -8,147 +8,204 @@ An unofficial SDK for [RDCW Slip Verify](https://slip.rdcw.co.th/) with function
 npm install node-rdcw-slipverify
 ```
 
-## Usage
-
-### Basic Usage
+## Quick Start
 
 ```typescript
-import { verifySlipFromPayload, validateSlip } from "node-rdcw-slipverify";
+import { createRdcwVerify } from "node-rdcw-slipverify";
 
-const config = {
+const rdcw = createRdcwVerify({
   clientId: "your-client-id",
-  clientSecret: "your-client-secret",
-};
-
-// Verify a slip using its payload
-const verifyResult = await verifySlipFromPayload({
-  payload: "0038000600000101030060217Bf870bf26685f55526203TH9104CF62",
-  config,
+  secret: "your-client-secret",
 });
 
-if (verifyResult.error) {
-  console.log("Verification failed:", verifyResult.error.message);
+// Verify a slip from payload
+const result = await rdcw.inquiryPayload(
+  "0038000600000101030060217Bf870bf26685f55526203TH9104CF62"
+);
+
+if (result.error) {
+  console.log("Error:", result.error.message);
+} else {
+  console.log("Success:", result.data);
+}
+```
+
+## Usage
+
+### 1. Basic Inquiry (No Validation)
+
+```typescript
+import { createRdcwVerify } from "node-rdcw-slipverify";
+
+const rdcw = createRdcwVerify({
+  clientId: "your-client-id",
+  secret: "your-client-secret",
+});
+
+// Verify from payload
+const result = await rdcw.inquiryPayload(payload);
+
+// Verify from image
+const imageResult = await rdcw.inquiryImage(imageBuffer);
+
+if (result.data) {
+  console.log("Transaction details:", result.data);
+}
+```
+
+### 2. Inquiry with Auto-Validation
+
+```typescript
+const result = await rdcw.inquiryPayload(payload, {
+  expectedAccount: "1234567890",
+  expectedBank: "014",
+  expectedAmount: "100.00", // Optional
+});
+
+if (result.error) {
+  console.log("Validation failed:", result.error.message);
   // Handle specific error types
-  switch (verifyResult.error.type) {
+  switch (result.error.type) {
+    case "INVALID_SLIP":
+      // Handle invalid slip
+      break;
+    case "EXPIRED_SLIP":
+      // Handle expired slip
+      break;
+    case "VALIDATION_ERROR":
+      // Handle validation errors
+      break;
     case "API_ERROR":
       // Handle API errors
       break;
     case "QR_CODE_ERROR":
       // Handle QR code errors
       break;
-    // ... handle other error types
   }
 } else {
-  // Validate the slip
-  const validationResult = validateSlip({
-    slipResult: verifyResult.data,
-    expectedAccount: "1234567890", // Your expected account number
-    expectedBank: "014", // Your expected bank code
-    expectedAmount: "100.00", // Optional: expected amount
+  console.log("Validation successful!", result.data);
+}
+```
+
+### 3. Using Callbacks
+
+```typescript
+const result = await rdcw.inquiryImage(imageBuffer, {
+  expectedAccount: "1234567890",
+  expectedBank: "014",
+  onSuccess: (data) => {
+    console.log("✅ Verification successful!");
+    console.log("Amount:", data.data.amount);
+    console.log("From:", data.data.sender.displayName);
+  },
+  onError: (error) => {
+    console.log("❌ API Error:", error.message);
+  },
+  onValidationError: (error) => {
+    console.log("⚠️ Validation failed:", error.message);
+  },
+});
+
+// Result is still returned for further processing
+if (result.data) {
+  // Save to database, etc.
+}
+```
+
+### 4. Manual Validation
+
+```typescript
+// First, verify the slip
+const verifyResult = await rdcw.inquiryPayload(payload);
+
+if (verifyResult.data) {
+  // Then, validate manually
+  const validateResult = rdcw.validate(verifyResult.data, {
+    expectedAccount: "1234567890",
+    expectedBank: "014",
+    expectedAmount: "100.00",
+    onSuccess: (data) => console.log("Validation passed!"),
+    onValidationError: (error) =>
+      console.log("Validation failed:", error.message),
   });
 
-  if (validationResult.error) {
-    console.log("Validation failed:", validationResult.error.message);
-  } else {
-    console.log("Validation successful!");
-    console.log("Verification result:", verifyResult.data);
+  if (validateResult.data) {
+    console.log("All checks passed!");
   }
 }
 ```
 
-### Reading QR code from an image
+### 5. Reading QR Code from Image
 
 ```typescript
 import fs from "fs";
-import { verifySlipFromImage, validateSlip } from "node-rdcw-slipverify";
 
-const config = {
-  clientId: "your-client-id",
-  clientSecret: "your-client-secret",
-};
-
-// Read a QR code from an image file
+// From file buffer
 const imageBuffer = fs.readFileSync("path/to/qr-code-image.png");
-
-const verifyResult = await verifySlipFromImage({
-  imageData: imageBuffer,
-  config,
+const result = await rdcw.inquiryImage(imageBuffer, {
+  expectedAccount: "1234567890",
+  expectedBank: "014",
 });
 
-if (verifyResult.error) {
-  console.log("Verification failed:", verifyResult.error.message);
-} else {
-  const validationResult = validateSlip({
-    slipResult: verifyResult.data,
-    expectedAccount: "1234567890",
-    expectedBank: "014",
-  });
-
-  if (validationResult.error) {
-    console.log("Validation failed:", validationResult.error.message);
-  } else {
-    console.log("Validation successful!");
-    console.log("Verification result:", verifyResult.data);
-  }
-}
-```
-
-### Working with Base64 Images
-
-```typescript
-// For base64-encoded images (e.g., from a web form)
+// From base64 string
 const base64Image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...";
-
-const verifyResult = await verifySlipFromImage({
-  imageData: base64Image,
-  config,
-});
-
-if (verifyResult.error) {
-  console.log("Verification failed:", verifyResult.error.message);
-} else {
-  const validationResult = validateSlip({
-    slipResult: verifyResult.data,
-    expectedAccount: "1234567890",
-    expectedBank: "014",
-  });
-
-  if (validationResult.error) {
-    console.log("Validation failed:", validationResult.error.message);
-  } else {
-    console.log("Validation successful!");
-    console.log("Verification result:", verifyResult.data);
-  }
-}
+const result2 = await rdcw.inquiryImage(base64Image);
 ```
 
 ## API Reference
 
-### Functions
+### Factory Function
 
-#### `verifySlipFromPayload({ payload, config }): Promise<Result<VerifySlipResult, SlipError>>`
+#### `createRdcwVerify(config)`
+
+Creates a new RDCW Verify instance.
+
+**Parameters:**
+
+- `config.clientId` (string, required): Your SlipVerify client ID
+- `config.secret` (string, required): Your SlipVerify client secret
+- `config.baseUrl` (string, optional): Custom API base URL (default: "https://suba.rdcw.co.th")
+
+**Returns:** `RdcwVerify` instance
+
+### Instance Methods
+
+#### `inquiryPayload(payload, options?)`
 
 Verifies a slip using its payload string.
 
-#### `verifySlipFromImage({ imageData, config }): Promise<Result<VerifySlipResult, SlipError>>`
+**Parameters:**
 
-Reads a QR code from an image and verifies the slip in one step.
+- `payload` (string): The QR code payload string
+- `options` (ValidationOptions, optional): Validation options
 
-#### `validateSlip({ slipResult, expectedAccount, expectedBank, expectedAmount? }): Result<true, SlipError>`
+**Returns:** `Promise<Result<VerifySlipResult, SlipError>>`
 
-Validates a slip by checking:
+#### `inquiryImage(imageData, options?)`
 
-- Slip validity
-- Cache status
-- Age (expires after 1 day)
-- Account number match
-- Bank code match
-- QR code format
-- Amount match (if expectedAmount is provided)
+Reads a QR code from an image and verifies the slip.
+
+**Parameters:**
+
+- `imageData` (ArrayBuffer | Buffer | string): Image data (buffer or base64 string)
+- `options` (ValidationOptions, optional): Validation options
+
+**Returns:** `Promise<Result<VerifySlipResult, SlipError>>`
+
+#### `validate(result, options)`
+
+Manually validates a verification result.
+
+**Parameters:**
+
+- `result` (VerifySlipResult): The result from inquiry
+- `options` (ValidationOptions): Validation options
+
+**Returns:** `Result<VerifySlipResult, SlipError>`
 
 ### Types
 
-#### Result Type
+#### `Result<T, E>`
 
 ```typescript
 type Result<T, E> = Success<T> | Failure<E>;
@@ -164,56 +221,48 @@ interface Failure<E> {
 }
 ```
 
-#### Error Types
+#### `ValidationOptions`
 
 ```typescript
+interface ValidationOptions {
+  expectedAccount?: string;
+  expectedBank?: string;
+  expectedAmount?: string;
+  onSuccess?: (data: VerifySlipResult) => void;
+  onError?: (error: SlipError) => void;
+  onValidationError?: (error: SlipError) => void;
+}
+```
+
+#### `SlipError`
+
+```typescript
+interface SlipError {
+  type: ErrorType;
+  message: string;
+}
+
 type ErrorType =
   | "INVALID_SLIP"
   | "EXPIRED_SLIP"
   | "QR_CODE_ERROR"
   | "API_ERROR"
   | "VALIDATION_ERROR";
-
-interface SlipError {
-  type: ErrorType;
-  message: string;
-}
 ```
 
-#### Configuration
-
-```typescript
-interface SlipVerifyConfig {
-  clientId: string;
-  clientSecret: string;
-  baseUrl?: string;
-}
-```
-
-#### Validation Parameters
-
-```typescript
-interface ValidateSlipParams {
-  slipResult: VerifySlipResult;
-  expectedAccount: string;
-  expectedBank: string;
-  expectedAmount?: string;
-}
-```
-
-#### API Response Types
+#### `VerifySlipResult`
 
 ```typescript
 interface VerifySlipResult {
   discriminator: string;
   valid: boolean;
-  data: TransactionData;
+  data: Data;
   quota: Quota;
   subscription: Subscription;
   isCached: boolean;
 }
 
-interface TransactionData {
+interface Data {
   language: string;
   transRef: string;
   sendingBank: string;
@@ -233,6 +282,41 @@ interface TransactionData {
   toMerchantId: string;
 }
 ```
+
+## Validation Rules
+
+The SDK validates slips based on the following criteria:
+
+1. **Validity**: The slip must be marked as valid by the API
+2. **Cache Status**: The slip must not have been used before (not cached)
+3. **Age**: The slip must not be older than 1 day
+4. **Account Number**: Matches the expected account (if provided)
+5. **Bank Code**: Matches the expected bank (if provided)
+6. **Amount**: Matches the expected amount (if provided)
+
+## Error Handling
+
+All methods return a `Result` type that contains either `data` or `error`:
+
+```typescript
+const result = await rdcw.inquiryPayload(payload);
+
+if (result.error) {
+  // Handle error
+  console.error(result.error.type, result.error.message);
+} else {
+  // Process data
+  console.log(result.data);
+}
+```
+
+### Error Types
+
+- `INVALID_SLIP`: The slip is invalid
+- `EXPIRED_SLIP`: The slip is older than 1 day
+- `QR_CODE_ERROR`: Failed to read or parse QR code
+- `API_ERROR`: API request failed
+- `VALIDATION_ERROR`: Validation checks failed
 
 ## Development
 
@@ -254,7 +338,7 @@ npm run dev
 - `npm run build` - Build the package
 - `npm run dev` - Run the package in development mode
 - `npm run clean` - Remove build artifacts
-- `npm run prepare` - Prepare the package for publishing (runs automatically on npm install)
+- `npm run prepare` - Prepare the package for publishing
 
 ## License
 

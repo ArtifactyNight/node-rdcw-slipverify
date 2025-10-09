@@ -1,384 +1,44 @@
 /**
  * rdcw-slipverify-sdk
- * A TypeScript SDK for SlipVerify
+ * A TypeScript SDK for SlipVerify with functional and OOP paradigms
  */
 
-import axios, { AxiosInstance } from "axios";
 import decodeQR from "@paulmillr/qr/decode.js";
-import { isAfter, subDays, parse } from "date-fns";
-import { parse as parsePrompt, EMVCoQR } from "promptparse";
+import axios, { AxiosInstance } from "axios";
+import { isAfter, parse, subDays } from "date-fns";
+import { parse as parsePrompt } from "promptparse";
 
-// Result Types
-export interface Success<T> {
-  data: T;
-  error?: never;
-}
+import type {
+  RdcwVerifyConfig,
+  Result,
+  SlipError,
+  ValidationOptions,
+  VerifySlipResult,
+} from "./types";
 
-export interface Failure<E> {
-  data?: never;
-  error: E;
-}
-
-export type Result<T, E> = Success<T> | Failure<E>;
-
-// Error Types
-export type ErrorType =
-  | "INVALID_SLIP"
-  | "EXPIRED_SLIP"
-  | "QR_CODE_ERROR"
-  | "API_ERROR"
-  | "VALIDATION_ERROR";
-
-export interface SlipError {
-  type: ErrorType;
-  message: string;
-}
+// Re-export all types
+export * from "./types";
 
 /**
- * Account information for sender or receiver
+ * Main RDCW Verify class
  */
-export interface Account {
-  type: null | string;
-  value: null | string;
-}
-
-/**
- * Sender or receiver information
- */
-export interface Receiver {
-  displayName: string;
-  name: string;
-  proxy: Account;
-  account: Account;
-}
-
-/**
- * Transaction data from the API
- */
-export interface Data {
-  language: string;
-  transRef: string;
-  sendingBank: string;
-  receivingBank: string;
-  transDate: string;
-  transTime: string;
-  sender: Receiver;
-  receiver: Receiver;
-  amount: string;
-  paidLocalAmount: string;
-  paidLocalCurrency: string;
-  countryCode: string;
-  transFeeAmount: string;
-  ref1: string;
-  ref2: string;
-  ref3: string;
-  toMerchantId: string;
-}
-
-/**
- * Quota information from the API
- */
-export interface Quota {
-  cost: number;
-  usage: number;
-  limit: number;
-}
-
-/**
- * Subscription information from the API
- */
-export interface Subscription {
-  id: number;
-  postpaid: boolean;
-}
-
-/**
- * Result from the slip inquiry API
- */
-export interface VerifySlipResult {
-  discriminator: string;
-  valid: boolean;
-  data: Data;
-  quota: Quota;
-  subscription: Subscription;
-  isCached: boolean;
-}
-
-/**
- * Validation result for bank slip
- */
-export interface BankValidationResult {
-  isValid: boolean;
-  error?: string;
-}
-
-/**
- * PromptParse result interface
- */
-export type PromptParseResult = EMVCoQR;
-
-/**
- * SlipVerify configuration
- */
-export interface SlipVerifyConfig {
-  clientId: string;
-  clientSecret: string;
-  baseUrl?: string;
-}
-
-/**
- * Validate slip parameters
- */
-export interface ValidateSlipParams {
-  slipResult: VerifySlipResult;
-  expectedAccount: string;
-  expectedBank: string;
-  expectedAmount?: string;
-}
-
-/**
- * Verify slip from image parameters
- */
-export interface VerifySlipFromImageParams {
-  imageData: ArrayBuffer | Buffer | string;
-  config: SlipVerifyConfig;
-}
-
-/**
- * Verify slip from payload parameters
- */
-export interface VerifySlipFromPayloadParams {
-  payload: string;
-  config: SlipVerifyConfig;
-}
-
-/**
- * Utility functions for bank slip validation
- */
-export class BankSlipValidator {
-  /**
-   * Check if a bank account number matches the expected account
-   * @param expectedAccount Expected account number
-   * @param actualAccount Actual account number from the slip
-   * @returns true if accounts match, false otherwise
-   */
-  static checkBankAccount(
-    expectedAccount: string,
-    actualAccount: string
-  ): boolean {
-    const cleanExpected = expectedAccount.replace(/-/g, "");
-    const cleanActual = actualAccount.replace(/-/g, "");
-
-    if (cleanExpected.length !== cleanActual.length) return false;
-
-    let matchingDigits = 0;
-    for (let i = 0; i < cleanExpected.length; i++) {
-      if (!this.isNumeric(cleanExpected[i])) continue;
-      if (cleanExpected[i] !== cleanActual[i]) continue;
-      matchingDigits++;
-    }
-
-    return matchingDigits >= 3;
-  }
-
-  /**
-   * Check if a slip is too old (more than 1 day)
-   * @param transDate Transaction date in YYYYMMDD format
-   * @param transTime Transaction time in HH:mm:ss format
-   * @returns true if slip is too old, false otherwise
-   */
-  static isOldSlip(transDate: string, transTime: string): boolean {
-    try {
-      // Parse the date and time
-      const date = parse(transDate, "yyyyMMdd", new Date());
-      const time = parse(transTime, "HH:mm:ss", new Date());
-
-      // Combine date and time
-      const transactionDateTime = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-        time.getHours(),
-        time.getMinutes(),
-        time.getSeconds()
-      );
-
-      // Check if transaction is older than 1 day
-      const oneDayAgo = subDays(new Date(), 1);
-      return !isAfter(transactionDateTime, oneDayAgo);
-    } catch (error) {
-      return true; // If parsing fails, consider the slip invalid
-    }
-  }
-
-  /**
-   * Check if a string is numeric
-   * @param str String to check
-   * @returns true if string is numeric, false otherwise
-   */
-  private static isNumeric(str: string): boolean {
-    if (typeof str !== "string") return false;
-    return !isNaN(Number(str)) && !isNaN(parseFloat(str));
-  }
-
-  /**
-   * Validate a bank slip
-   * @param result Slip verification result
-   * @param expectedAccount Expected account number
-   * @param expectedBank Expected bank code
-   * @returns Validation result
-   */
-  static validateSlip(
-    result: VerifySlipResult,
-    expectedAccount: string,
-    expectedBank: string
-  ): BankValidationResult {
-    // Check if slip is valid
-    if (!result.valid) {
-      return {
-        isValid: false,
-        error: "Invalid slip",
-      };
-    }
-
-    // Check if slip is cached
-    if (result.isCached) {
-      return {
-        isValid: false,
-        error: "This slip has already been used",
-      };
-    }
-
-    // Check if slip is too old
-    if (this.isOldSlip(result.data.transDate, result.data.transTime)) {
-      return {
-        isValid: false,
-        error: "This slip has expired",
-      };
-    }
-
-    // Check if account number matches
-    const receiverAccount = result.data.receiver.account.value;
-    if (
-      !receiverAccount ||
-      !this.checkBankAccount(expectedAccount, receiverAccount)
-    ) {
-      return {
-        isValid: false,
-        error: "Invalid account number",
-      };
-    }
-
-    // Check if bank code matches
-    if (result.data.receivingBank !== expectedBank) {
-      return {
-        isValid: false,
-        error: "Invalid bank",
-      };
-    }
-
-    return { isValid: true };
-  }
-
-  /**
-   * Validate a QR code payload using PromptParse
-   * @param payload QR code payload string
-   * @returns PromptParse result or null if invalid
-   */
-  static validatePromptParse(payload: string): PromptParseResult | null {
-    try {
-      const result = parsePrompt(payload);
-      return result;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  /**
-   * Validate a bank slip with PromptParse
-   * @param result Slip verification result
-   * @param expectedAccount Expected account number
-   * @param expectedBank Expected bank code
-   * @param expectedAmount Expected amount (optional)
-   * @returns Validation result
-   */
-  static validateSlipWithPromptParse(
-    result: VerifySlipResult,
-    expectedAccount: string,
-    expectedBank: string,
-    expectedAmount?: string
-  ): BankValidationResult {
-    // First validate the basic slip
-    const basicValidation = this.validateSlip(
-      result,
-      expectedAccount,
-      expectedBank
-    );
-    if (!basicValidation.isValid) {
-      return basicValidation;
-    }
-
-    // Validate the QR code payload using PromptParse
-    const promptParseResult = this.validatePromptParse(result.data.transRef);
-    if (!promptParseResult) {
-      return {
-        isValid: false,
-        error: "Invalid QR code format",
-      };
-    }
-
-    // Validate account number from PromptParse
-    const qrAccount = promptParseResult.getTagValue("30", "01"); // Tag 30-01 contains the account number
-    if (!qrAccount || qrAccount !== expectedAccount) {
-      return {
-        isValid: false,
-        error: "Account number mismatch in QR code",
-      };
-    }
-
-    // Validate amount if provided
-    const qrAmount = promptParseResult.getTagValue("54"); // Tag 54 contains the transaction amount
-    if (expectedAmount && qrAmount !== expectedAmount) {
-      return {
-        isValid: false,
-        error: "Amount mismatch in QR code",
-      };
-    }
-
-    return { isValid: true };
-  }
-}
-
-/**
- * SlipVerifySDK - A TypeScript SDK for interacting with the SlipVerify API
- */
-export class SlipVerifySDK {
+class RdcwVerify {
   private clientId: string;
-  private clientSecret: string;
+  private secret: string;
   private baseUrl: string;
   private apiClient: AxiosInstance;
 
-  /**
-   * Initialize the SlipVerify SDK
-   * @param clientId Your SlipVerify client ID
-   * @param clientSecret Your SlipVerify client secret
-   * @param options Additional configuration options
-   */
-  constructor(
-    clientId: string,
-    clientSecret: string,
-    options: { baseUrl?: string } = {}
-  ) {
-    this.clientId = clientId;
-    this.clientSecret = clientSecret;
-    this.baseUrl = options.baseUrl || "https://suba.rdcw.co.th";
+  constructor(config: RdcwVerifyConfig) {
+    this.clientId = config.clientId;
+    this.secret = config.secret;
+    this.baseUrl = config.baseUrl || "https://suba.rdcw.co.th";
 
     // Initialize axios instance with default configuration
     this.apiClient = axios.create({
       baseURL: this.baseUrl,
       auth: {
         username: this.clientId,
-        password: this.clientSecret,
+        password: this.secret,
       },
       headers: {
         "Content-Type": "application/json",
@@ -390,9 +50,10 @@ export class SlipVerifySDK {
    * Read QR code from an image and extract the payload
    * @param imageInput Image data (ArrayBuffer, Buffer, or base64 string)
    * @returns The QR code payload string
-   * @throws Error if QR code cannot be read
    */
-  async readQRCode(imageInput: ArrayBuffer | Buffer | string): Promise<string> {
+  private async readQRCode(
+    imageInput: ArrayBuffer | Buffer | string
+  ): Promise<Result<string, SlipError>> {
     try {
       // If imageInput is a base64 string, convert it to a Buffer
       let processedInput = imageInput;
@@ -421,9 +82,13 @@ export class SlipVerifySDK {
       const height = width;
 
       if (!Number.isInteger(width)) {
-        throw new Error(
-          "The image dimensions could not be determined. Please provide a valid image."
-        );
+        return {
+          error: {
+            type: "QR_CODE_ERROR",
+            message:
+              "The image dimensions could not be determined. Please provide a valid image.",
+          },
+        };
       }
 
       // Use the QR library to read the code
@@ -436,59 +101,346 @@ export class SlipVerifySDK {
       const result = decodeQR(qrImageData);
 
       if (!result) {
-        throw new Error("No QR code found in the image");
+        return {
+          error: {
+            type: "QR_CODE_ERROR",
+            message: "No QR code found in the image",
+          },
+        };
       }
 
-      return result;
+      return { data: result };
     } catch (error) {
-      throw new Error(`Failed to read QR code: ${(error as Error).message}`);
+      return {
+        error: {
+          type: "QR_CODE_ERROR",
+          message: `Failed to read QR code: ${(error as Error).message}`,
+        },
+      };
     }
   }
 
   /**
-   * Inquire about a transfer slip's validity and details
+   * Call the inquiry API to verify a slip
    * @param payload Payload string from QR code
-   * @returns Promise with verification result
+   * @returns Verification result
    */
-  private async inquiry(payload: string): Promise<VerifySlipResult> {
+  private async inquiry(
+    payload: string
+  ): Promise<Result<VerifySlipResult, SlipError>> {
     try {
       const response = await this.apiClient.post("/v1/inquiry", {
         payload,
       });
 
       if (response.data && response.data.valid !== undefined) {
-        return response.data as VerifySlipResult;
+        return { data: response.data as VerifySlipResult };
       }
 
-      throw new Error("Invalid response from API");
+      return {
+        error: {
+          type: "API_ERROR",
+          message: "Invalid response from API",
+        },
+      };
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(`API request failed: ${error.message}`);
+        return {
+          error: {
+            type: "API_ERROR",
+            message: `API request failed: ${error.message}`,
+          },
+        };
       }
-      throw error;
+      return {
+        error: {
+          type: "API_ERROR",
+          message: `Unexpected error: ${(error as Error).message}`,
+        },
+      };
     }
+  }
+
+  /**
+   * Check if a string is numeric
+   * @param str String to check
+   * @returns true if string is numeric, false otherwise
+   */
+  private isNumeric(str: string): boolean {
+    if (typeof str !== "string") return false;
+    return !isNaN(Number(str)) && !isNaN(parseFloat(str));
+  }
+
+  /**
+   * Check if a bank account number matches the expected account
+   * @param expectedAccount Expected account number
+   * @param actualAccount Actual account number from the slip
+   * @returns true if accounts match, false otherwise
+   */
+  private checkBankAccount(
+    expectedAccount: string,
+    actualAccount: string
+  ): boolean {
+    const cleanExpected = expectedAccount.replace(/-/g, "");
+    const cleanActual = actualAccount.replace(/-/g, "");
+
+    if (cleanExpected.length !== cleanActual.length) return false;
+
+    let matchingDigits = 0;
+    for (let i = 0; i < cleanExpected.length; i++) {
+      if (!this.isNumeric(cleanExpected[i])) continue;
+      if (cleanExpected[i] !== cleanActual[i]) continue;
+      matchingDigits++;
+    }
+
+    return matchingDigits >= 3;
+  }
+
+  /**
+   * Check if a slip is too old (more than 1 day)
+   * @param transDate Transaction date in YYYYMMDD format
+   * @param transTime Transaction time in HH:mm:ss format
+   * @returns true if slip is too old, false otherwise
+   */
+  private isOldSlip(transDate: string, transTime: string): boolean {
+    try {
+      // Parse the date and time
+      const date = parse(transDate, "yyyyMMdd", new Date());
+      const time = parse(transTime, "HH:mm:ss", new Date());
+
+      // Combine date and time
+      const transactionDateTime = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        time.getHours(),
+        time.getMinutes(),
+        time.getSeconds()
+      );
+
+      // Check if transaction is older than 1 day
+      const oneDayAgo = subDays(new Date(), 1);
+      return !isAfter(transactionDateTime, oneDayAgo);
+    } catch (error) {
+      return true; // If parsing fails, consider the slip invalid
+    }
+  }
+
+  /**
+   * Validate a slip result against expected parameters
+   * @param result Slip verification result
+   * @param options Validation options
+   * @returns Validation result
+   */
+  public validate(
+    result: VerifySlipResult,
+    options: ValidationOptions
+  ): Result<VerifySlipResult, SlipError> {
+    // Check if slip is valid
+    if (!result.valid) {
+      const error: SlipError = {
+        type: "INVALID_SLIP",
+        message: "Invalid slip",
+      };
+      if (options.onValidationError) {
+        options.onValidationError(error);
+      }
+      return { error };
+    }
+
+    // Check if slip is cached
+    if (result.isCached) {
+      const error: SlipError = {
+        type: "VALIDATION_ERROR",
+        message: "This slip has already been used",
+      };
+      if (options.onValidationError) {
+        options.onValidationError(error);
+      }
+      return { error };
+    }
+
+    // Check if slip is too old
+    if (this.isOldSlip(result.data.transDate, result.data.transTime)) {
+      const error: SlipError = {
+        type: "EXPIRED_SLIP",
+        message: "This slip has expired",
+      };
+      if (options.onValidationError) {
+        options.onValidationError(error);
+      }
+      return { error };
+    }
+
+    // Check if account number matches (if provided)
+    if (options.expectedAccount) {
+      const receiverAccount = result.data.receiver.account.value;
+      if (
+        !receiverAccount ||
+        !this.checkBankAccount(options.expectedAccount, receiverAccount)
+      ) {
+        const error: SlipError = {
+          type: "VALIDATION_ERROR",
+          message: "Invalid account number",
+        };
+        if (options.onValidationError) {
+          options.onValidationError(error);
+        }
+        return { error };
+      }
+    }
+
+    // Check if bank code matches (if provided)
+    if (options.expectedBank) {
+      if (result.data.receivingBank !== options.expectedBank) {
+        const error: SlipError = {
+          type: "VALIDATION_ERROR",
+          message: "Invalid bank",
+        };
+        if (options.onValidationError) {
+          options.onValidationError(error);
+        }
+        return { error };
+      }
+    }
+
+    // Check if amount matches (if provided)
+    if (options.expectedAmount) {
+      // Validate the QR code payload using PromptParse
+      try {
+        const promptParseResult = parsePrompt(result.data.transRef);
+
+        if (!promptParseResult) {
+          const error: SlipError = {
+            type: "VALIDATION_ERROR",
+            message: "Invalid QR code format",
+          };
+          if (options.onValidationError) {
+            options.onValidationError(error);
+          }
+          return { error };
+        }
+
+        // Validate amount from PromptParse
+        const qrAmount = promptParseResult.getTagValue("54"); // Tag 54 contains the transaction amount
+        if (qrAmount !== options.expectedAmount) {
+          const error: SlipError = {
+            type: "VALIDATION_ERROR",
+            message: "Amount mismatch in QR code",
+          };
+          if (options.onValidationError) {
+            options.onValidationError(error);
+          }
+          return { error };
+        }
+      } catch (error) {
+        const slipError: SlipError = {
+          type: "VALIDATION_ERROR",
+          message: "Invalid QR code format",
+        };
+        if (options.onValidationError) {
+          options.onValidationError(slipError);
+        }
+        return { error: slipError };
+      }
+    }
+
+    // All validation passed
+    if (options.onSuccess) {
+      options.onSuccess(result);
+    }
+    return { data: result };
   }
 
   /**
    * Verify a slip using its QR code image
    * @param imageData QR code image data (ArrayBuffer, Buffer, or base64 string)
+   * @param options Optional validation options
    * @returns Promise with verification result
    */
-  async verifySlipFromImage(
-    imageData: ArrayBuffer | Buffer | string
-  ): Promise<VerifySlipResult> {
-    const payload = await this.readQRCode(imageData);
-    return this.inquiry(payload);
+  public async inquiryImage(
+    imageData: ArrayBuffer | Buffer | string,
+    options?: ValidationOptions
+  ): Promise<Result<VerifySlipResult, SlipError>> {
+    // Read QR code
+    const qrResult = await this.readQRCode(imageData);
+    if (qrResult.error) {
+      if (options?.onError) {
+        options.onError(qrResult.error);
+      }
+      return qrResult;
+    }
+
+    // Call inquiry API
+    const inquiryResult = await this.inquiry(qrResult.data);
+    if (inquiryResult.error) {
+      if (options?.onError) {
+        options.onError(inquiryResult.error);
+      }
+      return inquiryResult;
+    }
+
+    // If validation options provided, validate the result
+    if (
+      options &&
+      (options.expectedAccount ||
+        options.expectedBank ||
+        options.expectedAmount)
+    ) {
+      return this.validate(inquiryResult.data, options);
+    }
+
+    // No validation needed, just call onSuccess if provided
+    if (options?.onSuccess) {
+      options.onSuccess(inquiryResult.data);
+    }
+    return inquiryResult;
   }
 
   /**
    * Verify a slip using its payload
-   * @param payload The ID of the slip to verify
+   * @param payload The payload string from the QR code
+   * @param options Optional validation options
    * @returns Promise with verification result
    */
-  async verifySlip(payload: string): Promise<VerifySlipResult> {
-    return this.inquiry(payload);
+  public async inquiryPayload(
+    payload: string,
+    options?: ValidationOptions
+  ): Promise<Result<VerifySlipResult, SlipError>> {
+    // Call inquiry API
+    const inquiryResult = await this.inquiry(payload);
+    if (inquiryResult.error) {
+      if (options?.onError) {
+        options.onError(inquiryResult.error);
+      }
+      return inquiryResult;
+    }
+
+    // If validation options provided, validate the result
+    if (
+      options &&
+      (options.expectedAccount ||
+        options.expectedBank ||
+        options.expectedAmount)
+    ) {
+      return this.validate(inquiryResult.data, options);
+    }
+
+    // No validation needed, just call onSuccess if provided
+    if (options?.onSuccess) {
+      options.onSuccess(inquiryResult.data);
+    }
+    return inquiryResult;
   }
 }
 
-export default SlipVerifySDK;
+/**
+ * Factory function to create an RDCW Verify instance
+ * @param config Configuration object with clientId, secret, and optional baseUrl
+ * @returns RdcwVerify instance
+ */
+export function createRdcwVerify(config: RdcwVerifyConfig): RdcwVerify {
+  return new RdcwVerify(config);
+}
+
+export default createRdcwVerify;
