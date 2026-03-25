@@ -1,7 +1,10 @@
 {
   "name": "node-rdcw-slipverify",
   "version": "3.0.0",
-  "description": "RDCW Slip Verify SDK for Node.js - Verify Thai bank transfer slips via QR code scanning",
+  "description": "RDCW Slip Verify SDK v3 for Node.js — verify Thai bank slips via /v2/inquiry (JSON payload or multipart file)",
+  "engines": {
+    "node": ">=18"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -44,21 +47,19 @@
   },
   "homepage": "https://github.com/ArtifactyNight/node-rdcw-slipverify#readme",
   "devDependencies": {
-    "@commitlint/cli": "^20.1.0",
-    "@commitlint/config-conventional": "^20.0.0",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.6",
     "@semantic-release/npm": "^12.0.2",
-    "@types/node": "^22.13.9",
+    "@types/node": "^22.19.15",
     "semantic-release": "^24.2.9",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@paulmillr/qr": "^0.3.0",
-    "axios": "^1.8.1",
-    "date-fns": "^3.3.1",
-    "promptparse": "^1.4.0"
+    "date-fns": "^3.6.0",
+    "promptparse": "^1.5.0"
   }
 }

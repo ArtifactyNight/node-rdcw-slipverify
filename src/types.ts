@@ -1,5 +1,5 @@
 /**
- * Type definitions for rdcw-slipverify-sdk
+ * Type definitions for node-rdcw-slipverify (v3)
  */
 
 // Result Types
@@ -19,13 +19,14 @@ export type Result<T, E> = Success<T> | Failure<E>;
 export type ErrorType =
   | "INVALID_SLIP"
   | "EXPIRED_SLIP"
-  | "QR_CODE_ERROR"
   | "API_ERROR"
   | "VALIDATION_ERROR";
 
 export interface SlipError {
   type: ErrorType;
   message: string;
+  /** Present when `type === "API_ERROR"` and the server returned a numeric code */
+  code?: number;
 }
 
 /**
@@ -98,20 +99,9 @@ export interface VerifySlipResult {
   isCached: boolean;
 }
 
-/**
- * Locale type
- */
 export type Locale = "en" | "th";
 
-/**
- * Locale messages for error and validation messages
- */
 export interface LocaleMessages {
-  qr: {
-    invalidDimensions: string;
-    notFound: string;
-    readFailed: string;
-  };
   api: {
     invalidResponse: string;
     requestFailed: string;
@@ -129,9 +119,9 @@ export interface LocaleMessages {
 }
 
 /**
- * RDCW Verify configuration
+ * SDK configuration (v3)
  */
-export interface RdcwVerifyConfig {
+export interface SlipVerifyConfig {
   clientId: string;
   secret: string;
   baseUrl?: string;
@@ -140,13 +130,25 @@ export interface RdcwVerifyConfig {
 }
 
 /**
- * Validation options for slip verification
+ * Rules applied after a successful API inquiry
  */
-export interface ValidationOptions {
+export interface ValidateSlipOptions {
   expectedAccount?: string;
   expectedBank?: string;
   expectedAmount?: string;
-  onSuccess?: (data: VerifySlipResult) => void;
-  onError?: (error: SlipError) => void;
-  onValidationError?: (error: SlipError) => void;
+  /** Reject slips older than this many days (default: 1) */
+  maxAgeDays?: number;
+  /** Reject when `isCached` is true (default: true) */
+  rejectCached?: boolean;
+}
+
+/**
+ * Multipart slip upload input for {@link SlipVerifyClient.verifyFromSlipFile}
+ */
+export interface SlipFileInput {
+  data: ArrayBuffer | Buffer | Uint8Array | Blob;
+  fileName: string;
+  contentType?: string;
+  /** Override default `file` field construction (e.g. custom fields) */
+  buildFormData?: () => FormData;
 }
