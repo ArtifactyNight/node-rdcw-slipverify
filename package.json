@@ -1,6 +1,6 @@
 {
   "name": "node-rdcw-slipverify",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "RDCW Slip Verify SDK v3 for Node.js — verify Thai bank slips via /v2/inquiry (JSON payload or multipart file)",
   "engines": {
     "node": ">=18"
